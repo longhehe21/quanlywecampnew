@@ -1,20 +1,18 @@
-# fly.toml app configuration file generated for quanlykho-wecamp on 2025-12-12T15:19:08+07:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
 app = 'quanlykho-wecamp'
 primary_region = 'sin'
+
+[build]
+  # Không cần buildpacks vì dùng Dockerfile
+  # Fly tự dùng Dockerfile nếu có
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = false   # Giữ máy chạy liên tục (không ngủ)
   auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+  min_machines_running = 1     # Luôn có ít nhất 1 máy chạy (tránh cold start)
 
 [[vm]]
-  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 512
+  memory = '512mb'
