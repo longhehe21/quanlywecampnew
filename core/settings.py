@@ -31,7 +31,7 @@ SECRET_KEY = 'g7!k9@m2$p5^q8&w3*e0(r4)t7-y1_u2[i5]o8;p3/a6.s9,d2l1k4j5h6g8f7d6s5
 # ALLOWED_HOSTS = []
 
 # SECURITY
-DEBUG = False  # Đổi thành False trên production (Fly.io)
+DEBUG = True  # Đổi thành False trên production (Fly.io)
 
 ALLOWED_HOSTS = ['*']  # Cho phép tất cả domain (an toàn cho Fly.io)
 # Hoặc cụ thể hơn: ALLOWED_HOSTS = ['quanlykho-wecamp.fly.dev', 'localhost', '127.0.0.1']
