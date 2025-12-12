@@ -36,6 +36,12 @@ DEBUG = True  # Đổi thành False trên production (Fly.io)
 ALLOWED_HOSTS = ['*']  # Cho phép tất cả domain (an toàn cho Fly.io)
 # Hoặc cụ thể hơn: ALLOWED_HOSTS = ['quanlykho-wecamp.fly.dev', 'localhost', '127.0.0.1']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://quanlykho-wecamp.fly.dev',
+    'https://*.fly.dev',  # cho an toàn nếu đổi tên app
+]
+
+
 # Application definition
 
 INSTALLED_APPS = [
