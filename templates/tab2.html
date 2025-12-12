@@ -16,7 +16,7 @@
                             <input type="hidden" name="form_type" value="xoa_bar">
                             <input type="date" name="ngay_xoa" class="form-control" required>
                             <button type="submit" class="btn btn-outline-danger btn-sm"
-                                    onclick="return confirm('XÓA TOÀN BỘ TỒN QUẦY BAR NGÀY NÀY? Không thể khôi phục!')">
+                                    onclick="return confirm('XÓA TOÀN BỘ TỒN QUẦY BAR NGÀY NÀY?')">
                                 XÓA BAR
                             </button>
                         </form>
@@ -27,7 +27,7 @@
                             <input type="hidden" name="form_type" value="xoa_bep">
                             <input type="date" name="ngay_xoa" class="form-control" required>
                             <button type="submit" class="btn btn-outline-success btn-sm"
-                                    onclick="return confirm('XÓA TOÀN BỘ TỒN BẾP NGÀY NÀY? Không thể khôi phục!')">
+                                    onclick="return confirm('XÓA TOÀN BỘ TỒN BẾP NGÀY NÀY?')">
                                 XÓA BẾP
                             </button>
                         </form>
@@ -38,28 +38,27 @@
                             <input type="hidden" name="form_type" value="xoa_letan">
                             <input type="date" name="ngay_xoa" class="form-control" required>
                             <button type="submit" class="btn btn-outline-warning btn-sm text-dark"
-                                    onclick="return confirm('XÓA TOÀN BỘ TỒN LỄ TÂN NGÀY NÀY? Không thể khôi phục!')">
+                                    onclick="return confirm('XÓA TOÀN BỘ TỒN LỄ TÂN NGÀY NÀY?')">
                                 XÓA LỄ TÂN
                             </button>
                         </form>
                     </div>
                 </div>
-                <small class="text-muted d-block mt-2">Chỉ dùng khi nhập sai – cẩn thận!</small>
             </div>
         </div>
 
-        <!-- NHẬP TỒN QUẦY BAR (NƯỚC UỐNG + KHÁC) -->
+        <!-- NHẬP TỒN QUẦY BAR -->
         <div class="card shadow-sm mb-4 border-primary">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">NHẬP TỒN QUẦY BAR (Nước uống + Khác)</h4>
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="form-bar">
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="tonkho_bar">
                     <div class="input-group input-group-sm mb-3">
                         <span class="input-group-text bg-primary text-white">Ngày</span>
-                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                        <input type="date" name="ngay" class="form-control ngay-nhap" value="{{ today|date:'Y-m-d' }}" required onchange="loadTonKho(this.value, 'bar')">
                     </div>
                     <div class="table-responsive" style="max-height: 400px;">
                         <table class="table table-sm table-hover">
@@ -71,28 +70,26 @@
                                     <th class="text-center text-warning fw-bold">Dùng</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="table-bar-body">
                                 {% for hh in hang_hoa_bar %}
                                 {% with ton=hh.ton_quay_bar.all|first %}
-                                <tr>
+                                <tr data-hh-id="{{ hh.id }}">
                                     <td><strong>{{ hh.ten }}</strong></td>
                                     <td>
                                         <input type="number" step="0.0001" name="nhap_{{ hh.id }}"
-                                               class="form-control form-control-sm text-center"
+                                               class="form-control form-control-sm text-center nhap-input"
                                                placeholder="0" value="{{ ton.nhap|default:"0" }}">
                                     </td>
                                     <td>
                                         <input type="number" step="0.0001" name="toncuoi_{{ hh.id }}"
-                                               class="form-control form-control-sm text-center"
-                                               value="{{ ton.ton_cuoi|default:'' }}" required>
+                                               class="form-control form-control-sm text-center toncuoi-input"
+                                               value="{{ ton.ton_cuoi|default:"" }}" required>
                                     </td>
-                                    <td class="text-center text-warning fw-bold">
+                                    <td class="text-center text-warning fw-bold luongdung">
                                         {{ ton.luong_dung|smart_decimal|default:"—" }}
                                     </td>
                                 </tr>
                                 {% endwith %}
-                                {% empty %}
-                                <tr><td colspan="4" class="text-center text-muted">Không có hàng loại Nước uống/Khác</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -104,18 +101,18 @@
             </div>
         </div>
 
-        <!-- NHẬP TỒN BẾP (ĐỒ ĂN) -->
+        <!-- NHẬP TỒN BẾP -->
         <div class="card shadow-sm mb-4 border-success">
             <div class="card-header bg-success text-white">
                 <h4 class="mb-0">NHẬP TỒN BẾP (Đồ ăn)</h4>
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="form-bep">
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="tonkho_bep">
                     <div class="input-group input-group-sm mb-3">
                         <span class="input-group-text bg-success text-white">Ngày</span>
-                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                        <input type="date" name="ngay" class="form-control ngay-nhap" value="{{ today|date:'Y-m-d' }}" required onchange="loadTonKho(this.value, 'bep')">
                     </div>
                     <div class="table-responsive" style="max-height: 400px;">
                         <table class="table table-sm table-hover">
@@ -127,28 +124,26 @@
                                     <th class="text-center text-warning fw-bold">Dùng</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="table-bep-body">
                                 {% for hh in hang_hoa_bep %}
                                 {% with ton=hh.ton_quay_bar.all|first %}
-                                <tr>
+                                <tr data-hh-id="{{ hh.id }}">
                                     <td><strong>{{ hh.ten }}</strong></td>
                                     <td>
                                         <input type="number" step="0.0001" name="nhap_{{ hh.id }}"
-                                               class="form-control form-control-sm text-center"
+                                               class="form-control form-control-sm text-center nhap-input"
                                                placeholder="0" value="{{ ton.nhap|default:"0" }}">
                                     </td>
                                     <td>
                                         <input type="number" step="0.0001" name="toncuoi_{{ hh.id }}"
-                                               class="form-control form-control-sm text-center"
-                                               value="{{ ton.ton_cuoi|default:'' }}" required>
+                                               class="form-control form-control-sm text-center toncuoi-input"
+                                               value="{{ ton.ton_cuoi|default:"" }}" required>
                                     </td>
-                                    <td class="text-center text-warning fw-bold">
+                                    <td class="text-center text-warning fw-bold luongdung">
                                         {{ ton.luong_dung|smart_decimal|default:"—" }}
                                     </td>
                                 </tr>
                                 {% endwith %}
-                                {% empty %}
-                                <tr><td colspan="4" class="text-center text-muted">Không có hàng loại Đồ ăn</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -166,12 +161,12 @@
                 <h4 class="mb-0">NHẬP TỒN LỄ TÂN</h4>
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="form-letan">
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="tonkho_letan">
                     <div class="input-group input-group-sm mb-3">
                         <span class="input-group-text bg-warning text-dark">Ngày</span>
-                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                        <input type="date" name="ngay" class="form-control ngay-nhap" value="{{ today|date:'Y-m-d' }}" required onchange="loadTonKho(this.value, 'letan')">
                     </div>
                     <div class="row g-3">
                         {% for hh in hang_hoa_letan %}
@@ -180,8 +175,8 @@
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text text-truncate" style="max-width: 150px;">{{ hh.ten }}</span>
                                 <input type="number" step="0.01" name="toncuoi_{{ hh.id }}"
-                                       class="form-control text-center"
-                                       value="{{ ton.ton_cuoi|default:'' }}" placeholder="0">
+                                       class="form-control text-center toncuoi-input"
+                                       value="{{ ton.ton_cuoi|default:"" }}" placeholder="0">
                                 <span class="input-group-text bg-light">{{ hh.don_vi_le_tan }}</span>
                             </div>
                         </div>
@@ -372,3 +367,42 @@
         </div>
     </div>
 </div>
+
+
+<script>
+// Khi đổi ngày → tự động load lại dữ liệu tồn kho cho ngày đó (nếu có) hoặc để trống
+function loadTonKho(ngay, khuVuc) {
+    const rows = document.querySelectorAll(`#form-${khuVuc} tr[data-hh-id]`);
+    rows.forEach(row => {
+        const id = row.getAttribute('data-hh-id');
+        const nhapInput = row.querySelector('.nhap-input');
+        const toncuoiInput = row.querySelector('.toncuoi-input');
+        const luongdungCell = row.querySelector('.luongdung');
+
+        // Reset về 0 nếu không có dữ liệu ngày mới
+        if (nhapInput) nhapInput.value = '0';
+        if(toncuoiInput) toncuoiInput.value = '';
+        if(luongdungCell) luongdungCell.textContent = '—';
+    });
+
+    // Gọi AJAX lấy dữ liệu tồn kho ngày đó (nếu có)
+    fetch(`/api/tonkho/?ngay=${ngay}&khu_vuc=${khuVuc}`)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(item => {
+                const row = document.querySelector(`#form-${khuVuc} tr[data-hh-id="${item.hang_hoa_id}"]`);
+                if (row) {
+                    const nhap = row.querySelector('.nhap-input');
+                    const toncuoi = row.querySelector('.toncuoi-input');
+                    const dung = row.querySelector('.luongdung');
+                    if(nhap) nhap.value = item.nhap || '0';
+                    if(toncuoi) toncuoi.value = item.ton_cuoi || '';
+                    if(dung) dung.textContent = item.luong_dung || '—';
+                }
+            });
+        })
+        .catch(() => {
+            // Nếu lỗi hoặc không có dữ liệu → để trống là đúng
+        });
+}
+</script>
