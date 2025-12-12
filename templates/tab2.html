@@ -1,0 +1,374 @@
+{% load smart_format %}
+
+<div class="row">
+    <!-- CỘT TRÁI: XÓA + NHẬP TỒN -->
+    <div class="col-lg-7 mb-4">
+        <!-- PHẦN XÓA TỒN KHO THEO NGÀY -->
+        <div class="card shadow-sm mb-4 border-dark">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">XÓA TỒN KHO THEO NGÀY</h4>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <form method="post" class="input-group input-group-sm">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="xoa_bar">
+                            <input type="date" name="ngay_xoa" class="form-control" required>
+                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                    onclick="return confirm('XÓA TOÀN BỘ TỒN QUẦY BAR NGÀY NÀY? Không thể khôi phục!')">
+                                XÓA BAR
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post" class="input-group input-group-sm">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="xoa_bep">
+                            <input type="date" name="ngay_xoa" class="form-control" required>
+                            <button type="submit" class="btn btn-outline-success btn-sm"
+                                    onclick="return confirm('XÓA TOÀN BỘ TỒN BẾP NGÀY NÀY? Không thể khôi phục!')">
+                                XÓA BẾP
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post" class="input-group input-group-sm">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="xoa_letan">
+                            <input type="date" name="ngay_xoa" class="form-control" required>
+                            <button type="submit" class="btn btn-outline-warning btn-sm text-dark"
+                                    onclick="return confirm('XÓA TOÀN BỘ TỒN LỄ TÂN NGÀY NÀY? Không thể khôi phục!')">
+                                XÓA LỄ TÂN
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-2">Chỉ dùng khi nhập sai – cẩn thận!</small>
+            </div>
+        </div>
+
+        <!-- NHẬP TỒN QUẦY BAR (NƯỚC UỐNG + KHÁC) -->
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">NHẬP TỒN QUẦY BAR (Nước uống + Khác)</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="tonkho_bar">
+                    <div class="input-group input-group-sm mb-3">
+                        <span class="input-group-text bg-primary text-white">Ngày</span>
+                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-primary text-white">
+                                <tr>
+                                    <th>Hàng hóa</th>
+                                    <th class="text-center">Nhập</th>
+                                    <th class="text-center">Tồn cuối</th>
+                                    <th class="text-center text-warning fw-bold">Dùng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hh in hang_hoa_bar %}
+                                {% with ton=hh.ton_quay_bar.all|first %}
+                                <tr>
+                                    <td><strong>{{ hh.ten }}</strong></td>
+                                    <td>
+                                        <input type="number" step="0.0001" name="nhap_{{ hh.id }}"
+                                               class="form-control form-control-sm text-center"
+                                               placeholder="0" value="{{ ton.nhap|default:"0" }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.0001" name="toncuoi_{{ hh.id }}"
+                                               class="form-control form-control-sm text-center"
+                                               value="{{ ton.ton_cuoi|default:'' }}" required>
+                                    </td>
+                                    <td class="text-center text-warning fw-bold">
+                                        {{ ton.luong_dung|smart_decimal|default:"—" }}
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted">Không có hàng loại Nước uống/Khác</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
+                        LƯU TỒN QUẦY BAR
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- NHẬP TỒN BẾP (ĐỒ ĂN) -->
+        <div class="card shadow-sm mb-4 border-success">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">NHẬP TỒN BẾP (Đồ ăn)</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="tonkho_bep">
+                    <div class="input-group input-group-sm mb-3">
+                        <span class="input-group-text bg-success text-white">Ngày</span>
+                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-success text-white">
+                                <tr>
+                                    <th>Hàng hóa</th>
+                                    <th class="text-center">Nhập</th>
+                                    <th class="text-center">Tồn cuối</th>
+                                    <th class="text-center text-warning fw-bold">Dùng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hh in hang_hoa_bep %}
+                                {% with ton=hh.ton_quay_bar.all|first %}
+                                <tr>
+                                    <td><strong>{{ hh.ten }}</strong></td>
+                                    <td>
+                                        <input type="number" step="0.0001" name="nhap_{{ hh.id }}"
+                                               class="form-control form-control-sm text-center"
+                                               placeholder="0" value="{{ ton.nhap|default:"0" }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.0001" name="toncuoi_{{ hh.id }}"
+                                               class="form-control form-control-sm text-center"
+                                               value="{{ ton.ton_cuoi|default:'' }}" required>
+                                    </td>
+                                    <td class="text-center text-warning fw-bold">
+                                        {{ ton.luong_dung|smart_decimal|default:"—" }}
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted">Không có hàng loại Đồ ăn</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-lg w-100 mt-3">
+                        LƯU TỒN BẾP
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- NHẬP TỒN LỄ TÂN -->
+        <div class="card shadow-sm border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">NHẬP TỒN LỄ TÂN</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="tonkho_letan">
+                    <div class="input-group input-group-sm mb-3">
+                        <span class="input-group-text bg-warning text-dark">Ngày</span>
+                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="row g-3">
+                        {% for hh in hang_hoa_letan %}
+                        {% with ton=hh.ton_le_tan.all|first %}
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text text-truncate" style="max-width: 150px;">{{ hh.ten }}</span>
+                                <input type="number" step="0.01" name="toncuoi_{{ hh.id }}"
+                                       class="form-control text-center"
+                                       value="{{ ton.ton_cuoi|default:'' }}" placeholder="0">
+                                <span class="input-group-text bg-light">{{ hh.don_vi_le_tan }}</span>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-warning btn-lg w-100 mt-4">
+                        LƯU TỒN LỄ TÂN
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: BÁO CÁO -->
+    <div class="col-lg-5">
+        <!-- TỔNG TỒN KHO -->
+        <div class="card shadow-sm mb-4 border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">TỔNG TỒN KHO NGÀY <span class="badge bg-light text-dark">{{ ngay_xem_tong|date:"d/m/Y" }}</span></h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-success text-white">Chọn ngày</span>
+                        <input type="date" name="ngay_xem_tong" class="form-control" value="{{ ngay_xem_tong|date:'Y-m-d' }}" required>
+                        <button type="submit" class="btn btn-outline-light btn-sm">Xem</button>
+                    </div>
+                </form>
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Hàng hóa</th>
+                                <th class="text-center">Bar</th>
+                                <th class="text-center">Lễ tân</th>
+                                <th class="text-center text-primary fw-bold">TỔNG</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in tong_ton_chi_tiet %}
+                            <tr>
+                                <td><strong>{{ item.ten }}</strong></td>
+                                <td class="text-center">
+                                    {% if item.ton_bar > 0 %}
+                                        <span class="text-danger fw-bold">{{ item.ton_bar|smart_decimal }} {{ item.don_vi_bar }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if item.ton_letan > 0 %}
+                                        <span class="text-warning fw-bold">{{ item.ton_letan|smart_decimal }} {{ item.don_vi_letan }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td class="text-center text-primary fw-bold fs-4">
+                                    {{ item.tong_quy_doi|smart_decimal }} {{ item.don_vi_bar }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TỔNG LƯỢNG DÙNG THEO KỲ -->
+        <div class="card shadow-sm border-info">
+            <div class="card-header bg-info text-white">
+                <h5>TỔNG LƯỢNG DÙNG QUẦY BAR</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-2 mb-3">
+                    <div class="col-5"><input type="date" name="tu_ngay" class="form-control form-control-sm" value="{{ tu_ngay|date:'Y-m-d' }}"></div>
+                    <div class="col-5"><input type="date" name="den_ngay" class="form-control form-control-sm" value="{{ den_ngay|date:'Y-m-d' }}"></div>
+                    <div class="col-2"><button type="submit" class="btn btn-info btn-sm w-100">Xem</button></div>
+                </form>
+                <small class="text-muted fw-bold text-center mb-2">
+                    Từ {{ tu_ngay|date:"d/m" }} → {{ den_ngay|date:"d/m/Y" }}
+                </small>
+                <div class="mt-2">
+                    {% for item in tong_luong_dung_list %}
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="fw-bold">{{ item.hang_hoa.ten }}</span>
+                        <span class="text-danger fw-bold fs-5">
+                            {{ item.tong_luong_dung|smart_decimal }} {{ item.hang_hoa.don_vi_quay_bar }}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-5">Chưa có dữ liệu</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LỊCH SỬ TỒN QUẦY BAR -->
+<div class="card shadow-sm mt-4 border-primary">
+    <div class="card-header bg-primary text-white">
+        <h5>LỊCH SỬ TỒN KHO QUẦY BAR</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+                <thead class="table-primary text-white">
+                    <tr>
+                        <th>Ngày</th><th>Hàng</th><th>Tồn đầu</th><th>Nhập</th><th>Tồn cuối</th><th class="text-danger fw-bold">Dùng</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in lich_su_bar %}
+                    <tr>
+                        <td><small>{{ t.ngay|date:"d/m/Y" }}</small></td>
+                        <td>{{ t.hang_hoa.ten }}</td>
+                        <td class="text-center">{{ t.ton_dau|smart_decimal }}</td>
+                        <td class="text-center text-success">+{{ t.nhap|smart_decimal }}</td>
+                        <td class="text-center">{{ t.ton_cuoi|smart_decimal }}</td>
+                        <td class="text-center text-danger fw-bold">{{ t.luong_dung|smart_decimal }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- LỊCH SỬ TỒN BẾP (MỚI THÊM!) -->
+<div class="card shadow-sm mt-4 border-success">
+    <div class="card-header bg-success text-white">
+        <h5>LỊCH SỬ TỒN KHO BẾP (ĐỒ ĂN)</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+                <thead class="table-success text-white">
+                    <tr>
+                        <th>Ngày</th><th>Hàng</th><th>Tồn đầu</th><th>Nhập</th><th>Tồn cuối</th><th class="text-danger fw-bold">Dùng</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in lich_su_bep %}
+                    <tr>
+                        <td><small>{{ t.ngay|date:"d/m/Y" }}</small></td>
+                        <td>{{ t.hang_hoa.ten }}</td>
+                        <td class="text-center">{{ t.ton_dau|smart_decimal }}</td>
+                        <td class="text-center text-success">+{{ t.nhap|smart_decimal }}</td>
+                        <td class="text-center">{{ t.ton_cuoi|smart_decimal }}</td>
+                        <td class="text-center text-danger fw-bold">{{ t.luong_dung|smart_decimal }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu bếp</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- LỊCH SỬ TỒN LỄ TÂN -->
+<div class="card shadow-sm mt-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <h5>LỊCH SỬ TỒN KHO LỄ TÂN</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+                <thead class="table-warning">
+                    <tr>
+                        <th>Ngày</th><th>Hàng hóa</th><th class="text-end">Tồn cuối</th><th>Đơn vị</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in lich_su_letan %}
+                    <tr>
+                        <td><small>{{ t.ngay|date:"d/m/Y" }}</small></td>
+                        <td>{{ t.hang_hoa.ten }}</td>
+                        <td class="text-end text-warning fw-bold">{{ t.ton_cuoi|smart_decimal }}</td>
+                        <td>{{ t.hang_hoa.don_vi_le_tan }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

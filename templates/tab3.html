@@ -1,0 +1,161 @@
+{% load smart_format %}
+
+<div class="row">
+    <!-- CỘT TRÁI: TẢI + XÓA + XUẤT MÓN + XUẤT NGUYÊN LIỆU -->
+    <div class="col-lg-7 mb-4">
+        <!-- TẢI FILE EXCEL FABI -->
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">TẢI FILE FABI LÊN</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="upload_fabi">
+                    <div class="input-group mb-3">
+                        <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
+                        <button type="submit" class="btn btn-primary">TẢI LÊN</button>
+                    </div>
+                    <small class="text-muted">File Excel phải có 3 cột: <strong>ngày xuất</strong>, <strong>tên món</strong>, <strong>số lượng món</strong></small>
+                </form>
+            </div>
+        </div>
+
+        <!-- XÓA XUẤT MÓN FABI THEO NGÀY -->
+        <div class="card shadow-sm mb-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">XÓA XUẤT MÓN FABI THEO NGÀY</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" class="input-group input-group-sm">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="xoa_fabi">
+                    <input type="date" name="ngay_xoa_fabi" class="form-control" required>
+                    <button type="submit" class="btn btn-outline-light" 
+                            onclick="return confirm('XÓA TOÀN BỘ XUẤT MÓN FABI NGÀY NÀY?\nSẽ xóa cả xuất nguyên liệu Fabi!\nKhông thể khôi phục!')">
+                        XÓA NGÀY NÀY
+                    </button>
+                </form>
+                <small class="text-muted d-block mt-2">Chỉ dùng khi tải sai file Fabi</small>
+            </div>
+        </div>
+
+        <!-- XUẤT MÓN FABI -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5>XUẤT MÓN THEO FABI</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-info">
+                            <tr>
+                                <th>Ngày xuất</th>
+                                <th>Món</th>
+                                <th class="text-end">Số lượng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for xm in xuat_mon_fabi_list %}
+                            <tr>
+                                <td>{{ xm.ngay_xuat|date:"d/m/Y" }}</td>
+                                <td>{{ xm.cong_thuc.mon }}</td>
+                                <td class="text-end fw-bold">{{ xm.so_luong }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted py-4">Chưa có dữ liệu Fabi</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- XUẤT NGUYÊN LIỆU FABI -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5>XUẤT NGUYÊN LIỆU THEO FABI</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>Ngày</th>
+                                <th>Nguyên liệu</th>
+                                <th class="text-end">Số lượng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nl in xuat_nguyen_lieu_fabi_list %}
+                            <tr>
+                                <td>{{ nl.ngay_xuat|date:"d/m/Y" }}</td>
+                                <td>{{ nl.hang_hoa.ten }}</td>
+                                <td class="text-end text-primary fw-bold">
+                                    {{ nl.so_luong|smart_decimal }} {{ nl.hang_hoa.don_vi_quay_bar }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: SO SÁNH HAO HỤT -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">SO SÁNH FABI VS THỰC TẾ</h5>
+                <span class="badge bg-light text-dark fs-6">
+                    {{ tu_ngay_fabi|date:"d/m" }} → {{ den_ngay_fabi|date:"d/m/Y" }}
+                </span>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-2 mb-3">
+                    <div class="col-5">
+                        <input type="date" name="tu_ngay_fabi" class="form-control form-control-sm" value="{{ tu_ngay_fabi|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="col-5">
+                        <input type="date" name="den_ngay_fabi" class="form-control form-control-sm" value="{{ den_ngay_fabi|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="col-2">
+                        <button type="submit" class="btn btn-danger btn-sm w-100">Xem</button>
+                    </div>
+                </form>
+
+                <div class="table-responsive" style="max-height: 650px;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-danger text-white sticky-top">
+                            <tr>
+                                <th>Hàng hóa</th>
+                                <th class="text-center">Fabi</th>
+                                <th class="text-center">Thực tế</th>
+                                <th class="text-center">Chênh</th>
+                                <th class="text-center">Kết luận</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ss in sosanh_fabi_list %}
+                            <tr class="{% if ss.chenh_lech_tong > 0 %}table-danger{% elif ss.chenh_lech_tong < 0 %}table-success{% else %}table-light{% endif %}">
+                                <td><strong>{{ ss.hang_hoa.ten }}</strong></td>
+                                <td class="text-center">{{ ss.fabi_tong|smart_decimal }}</td>
+                                <td class="text-center">{{ ss.thuc_te_tong|smart_decimal }}</td>
+                                <td class="text-center fw-bold">
+                                    {% if ss.chenh_lech_tong > 0 %}+{% endif %}{{ ss.chenh_lech_tong|smart_decimal }}
+                                </td>
+                                <td class="text-center fw-bold">{{ ss.ghi_chu }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-5">Chưa có dữ liệu so sánh</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

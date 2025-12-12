@@ -1,0 +1,223 @@
+{% load smart_format %}
+
+<div class="row">
+    <!-- CỘT TRÁI: HÀNG HÓA (CÓ PHÂN LOẠI) -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">HÀNG HÓA</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="hanghoa">
+                    <div class="row g-2 align-items-center">
+                        <!-- PHÂN LOẠI -->
+                        <div class="col-md-2">
+                            <select name="loai" class="form-select form-select-sm" required>
+                                <option value="nuoc_uong" selected>Nước uống</option>
+                                <option value="do_an">Đồ ăn</option>
+                                <option value="khac">Khác</option>
+                            </select>
+                        </div>
+                        <!-- TÊN HÀNG HÓA -->
+                        <div class="col-md-4">
+                            <input type="text" name="ten" class="form-control form-control-sm" placeholder="Tên hàng hóa" required>
+                        </div>
+                        <!-- ĐƠN VỊ BAR -->
+                        <div class="col-md-2">
+                            <input type="text" name="don_vi_quay_bar" class="form-control form-control-sm" placeholder="ml, g, kg" required>
+                        </div>
+                        <!-- ĐƠN VỊ LỄ TÂN -->
+                        <div class="col-md-2">
+                            <input type="text" name="don_vi_le_tan" class="form-control form-control-sm" placeholder="chai, lon">
+                        </div>
+                        <!-- TỶ LỆ QUY ĐỔI -->
+                        <div class="col-md-1">
+                            <input type="number" step="0.0001" name="ty_le_quy_doi" class="form-control form-control-sm" value="1" required>
+                        </div>
+                        <!-- NÚT THÊM -->
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-success btn-sm w-100" title="Thêm">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive" style="max-height: 520px;">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-success">
+                            <tr>
+                                <th width="10%">Loại</th>
+                                <th>Tên</th>
+                                <th class="text-center">Bar</th>
+                                <th class="text-center">Lễ tân</th>
+                                <th class="text-center">1 lễ tân =</th>
+                                <th width="5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hh in hang_hoa_list %}
+                            <tr>
+                                <td>
+                                    {% if hh.loai == 'nuoc_uong' %}
+                                        <span class="badge bg-primary rounded-pill">Nước</span>
+                                    {% elif hh.loai == 'do_an' %}
+                                        <span class="badge bg-warning text-dark rounded-pill">Đồ ăn</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary rounded-pill">Khác</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>{{ hh.ten }}</strong></td>
+                                <td class="text-center"><code>{{ hh.don_vi_quay_bar }}</code></td>
+                                <td class="text-center">
+                                    {% if hh.don_vi_le_tan %}
+                                        <span class="badge bg-info text-dark">{{ hh.don_vi_le_tan }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td class="text-center text-primary fw-bold fs-6">
+                                    {{ hh.ty_le_quy_doi|smart_decimal }}
+                                </td>
+                                <td>
+                                    <a href="{% url 'xoa_hang_hoa' hh.id %}" 
+                                       class="text-danger" 
+                                       onclick="return confirm('Xóa {{ hh.ten }}?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center text-muted py-5">Chưa có hàng hóa nào</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: CÔNG THỨC MÓN -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">CÔNG THỨC MÓN</h4>
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalThemMon">
+                    <i class="bi bi-plus-lg"></i> Thêm món mới
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive" style="max-height: 620px;">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-primary sticky-top">
+                            <tr>
+                                <th>Món</th>
+                                <th>Nguyên liệu</th>
+                                <th class="text-center">Định lượng</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ct in cong_thuc_list %}
+                            <tr>
+                                <td>
+                                    <strong>{{ ct.cong_thuc.mon }}</strong>
+                                    {% if ct.cong_thuc.chi_tiet.count > 1 %}
+                                        <small class="text-muted">({{ ct.cong_thuc.chi_tiet.count }} nguyên liệu)</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ ct.hang_hoa.ten }}</td>
+                                <td class="text-center text-danger fw-bold">
+                                    {{ ct.dinh_luong|smart_decimal }} {{ ct.hang_hoa.don_vi_quay_bar }}
+                                </td>
+                                <td>
+                                    <a href="{% url 'xoa_chi_tiet' ct.id %}" 
+                                       class="text-danger" 
+                                       onclick="return confirm('Xóa nguyên liệu này khỏi {{ ct.cong_thuc.mon }}?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-5">Chưa có công thức món nào</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL THÊM CÔNG THỨC MÓN (CÓ NÚT + SIÊU MƯỢT) -->
+<div class="modal fade" id="modalThemMon" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="congthuc_multi">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Thêm công thức món mới</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-primary">Tên món</label>
+                        <input type="text" name="ten_mon" class="form-control" placeholder="Ví dụ: Trà đào cam sả, Bò nướng tiêu đen..." required>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3">Nguyên liệu (click + để thêm nhiều)</h6>
+                    <div id="nguyen-lieu-list">
+                        <div class="row g-2 mb-2 align-items-center nguyen-lieu-row">
+                            <div class="col-md-6">
+                                <select name="hang_hoa" class="form-select form-select-sm" required>
+                                    <option value="">-- Chọn nguyên liệu --</option>
+                                    {% for hh in hang_hoa_list %}
+                                    <option value="{{ hh.id }}">
+                                        {{ hh.ten }} ({{ hh.don_vi_quay_bar }}) 
+                                        {% if hh.loai == 'nuoc_uong' %}[Nước]{% elif hh.loai == 'do_an' %}[Đồ ăn]{% else %}[Khác]{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="number" step="0.0001" name="dinh_luong" class="form-control form-control-sm" placeholder="Số lượng" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm w-100 btn-xoa-row">−</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-them-nguyen-lieu" class="btn btn-outline-primary btn-sm mt-3">
+                        <i class="bi bi-plus-lg"></i> Thêm nguyên liệu
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary btn-lg">Lưu công thức</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Thêm dòng nguyên liệu
+document.getElementById('btn-them-nguyen-lieu').addEventListener('click', function() {
+    const list = document.getElementById('nguyen-lieu-list');
+    const row = list.children[0].cloneNode(true);
+    row.querySelector('select').value = '';
+    row.querySelector('input').value = '';
+    row.querySelector('.btn-xoa-row').disabled = false;
+    list.appendChild(row);
+});
+
+// Xóa dòng (giữ lại ít nhất 1 dòng)
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-xoa-row')) {
+        if (document.querySelectorAll('.nguyen-lieu-row').length > 1) {
+            e.target.closest('.nguyen-lieu-row').remove();
+        }
+    }
+});
+</script>
