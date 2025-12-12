@@ -25,10 +25,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-b1@yd!4r@ce!d_($s2fx+=&aj!yd()wqyezj(waz7z-(rhe(wz'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = False
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = []
 
+# SECURITY
+DEBUG = False  # Đổi thành False trên production (Fly.io)
+
+ALLOWED_HOSTS = ['*']  # Cho phép tất cả domain (an toàn cho Fly.io)
+# Hoặc cụ thể hơn: ALLOWED_HOSTS = ['quanlykho-wecamp.fly.dev', 'localhost', '127.0.0.1']
 
 # Application definition
 
