@@ -87,26 +87,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# Database — Supabase (Postgres)
+# Set DATABASE_URL env var ở local hoặc production.
+# Format Supabase: postgresql://postgres.<project_ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+# Lấy connection string từ: Supabase Dashboard → Project Settings → Database → Connection string (Transaction pooler)
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',  # Local dùng SQLite (không cần MySQL)
-        conn_max_age=600
+        default='sqlite:///db.sqlite3',  # Fallback nếu chưa set DATABASE_URL
+        conn_max_age=600,
+        conn_health_checks=True,
     )
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'kho_fnb',           # Tên DB bạn sẽ tạo
-#         'USER': 'root',
-#         'PASSWORD': 'hathanhlong',
-#         'HOST': 'localhost',
-#         'PORT': '3306',
-#     }
-# }
 
 
 # Password validation

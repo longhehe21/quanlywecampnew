@@ -1,232 +1,201 @@
-from django.db import models
-from django.db.models import Sum
-from django.utils import timezone
-from django.core.validators import MinValueValidator
-from django.core.exceptions import ValidationError
+"""
+Models cho Supabase schema (managed = False — Django không migrate).
+Schema được build trực tiếp trên Supabase qua SQL.
+"""
+import uuid
 from decimal import Decimal
+from django.db import models
 
 
-# ====================== 1. HÀNG HÓA ======================
-class HangHoa(models.Model):
-    LOAI_CHOICES = [
-        ('nuoc_uong', 'Nước uống'),
-        ('do_an', 'Đồ ăn'),
-        ('khac', 'Khác'),
+# ====================== 1. PRODUCT ======================
+class Product(models.Model):
+    CATEGORY_CHOICES = [
+        ('Bếp', 'Bếp'),
+        ('Quầy', 'Quầy'),
+        ('Lễ tân', 'Lễ tân'),
     ]
 
-    ten = models.CharField("Tên hàng hóa", max_length=200, unique=True)
-    loai = models.CharField("Phân loại", max_length=20, choices=LOAI_CHOICES, default='nuoc_uong')
-    don_vi_quay_bar = models.CharField("Đơn vị quầy bar (ml, g, kg…)", max_length=50)
-    don_vi_le_tan = models.CharField("Đơn vị lễ tân (chai, lon…)", max_length=50, blank=True, null=True)
-    ty_le_quy_doi = models.DecimalField(
-        "1 đơn vị lễ tân = bao nhiêu quầy bar?",
-        max_digits=12, decimal_places=4, default=1.0000,
-        help_text="Ví dụ: 1 chai Coca = 1500ml → nhập 1500.0000"
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    name = models.TextField("Tên sản phẩm")
+    category = models.TextField("Danh mục", choices=CATEGORY_CHOICES)
+    unit = models.TextField("Đơn vị base (g, ml, lon, cái...)")
+    package_size = models.DecimalField("Số base unit / package", max_digits=14, decimal_places=4, default=0)
+    package_unit = models.TextField("Đơn vị package (kg, chai, kiện...)", blank=True, null=True)
+    in_letan = models.BooleanField("Có ở lễ tân?", default=False)
+    is_intermediate = models.BooleanField("Là intermediate (cốt)?", default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'products'
+        verbose_name = 'Sản phẩm'
+        verbose_name_plural = '1. Sản phẩm'
+        ordering = ['category', 'name']
+
+    def __str__(self):
+        flag = " [INTERMEDIATE]" if self.is_intermediate else ""
+        return f"[{self.category}] {self.name}{flag}"
+
+
+# ====================== 2. SUPPLIER ======================
+class Supplier(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    name = models.TextField("Tên nhà cung cấp", unique=True)
+    phone = models.TextField("Điện thoại", blank=True, null=True)
+    address = models.TextField("Địa chỉ", blank=True, null=True)
+    note = models.TextField("Ghi chú", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'suppliers'
+        verbose_name = 'Nhà cung cấp'
+        verbose_name_plural = '2. Nhà cung cấp'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+# ====================== 3. PRICE LIST (versioned) ======================
+class PriceList(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    name = models.TextField("Tên bảng giá (vd: Bảng giá 5/2026)")
+    effective_from = models.DateField("Áp dụng từ")
+    is_active = models.BooleanField("Đang dùng?", default=False, help_text="Chỉ 1 bảng được active tại 1 thời điểm")
+    note = models.TextField("Ghi chú", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'price_lists'
+        verbose_name = 'Bảng giá'
+        verbose_name_plural = '3. Bảng giá (versions)'
+        ordering = ['-effective_from']
+
+    def __str__(self):
+        flag = " ★" if self.is_active else ""
+        return f"{self.name}{flag}"
+
+
+class PriceListItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE, db_column='price_list_id', related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column='product_id', related_name='prices')
+    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, db_column='supplier_id')
+    price = models.DecimalField("Giá / base unit", max_digits=14, decimal_places=4)
+    unit = models.TextField("Đơn vị base")
+    note = models.TextField("Ghi chú (vd: Mua 127000đ / 2000 gam)", blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'price_list_items'
+        verbose_name = 'Giá / bảng / NCC'
+        verbose_name_plural = '   Giá theo bảng'
+        unique_together = (('price_list', 'product', 'supplier'),)
+
+    def __str__(self):
+        return f"{self.product.name} @ {self.price}đ/{self.unit}"
+
+
+# ====================== 4. COST OVERHEAD ======================
+class CostOverhead(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    code = models.TextField("Mã (vd da_vien, gas_cn)", unique=True)
+    name = models.TextField("Tên định mức")
+    unit = models.TextField("Đơn vị (suất, lần, bộ)")
+    cost = models.DecimalField("Cost / đơn vị", max_digits=14, decimal_places=4)
+    note = models.TextField("Ghi chú", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'cost_overhead'
+        verbose_name = 'Chi phí định mức'
+        verbose_name_plural = '4. Chi phí định mức'
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.cost}đ/{self.unit})"
+
+
+# ====================== 5. RECIPE ======================
+class Recipe(models.Model):
+    RECIPE_TYPE_CHOICES = [
+        ('final', 'Món bán'),
+        ('sub', 'Sub-recipe (ủ cốt)'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    name = models.TextField("Tên món / công thức", unique=True)
+    ingredients = models.JSONField(
+        "Nguyên liệu (jsonb array)",
+        default=list,
+        help_text='Format: [{"type":"product","product_id":"uuid","qty":30,"unit":"g"},{"type":"overhead","overhead_id":"uuid","qty":1,"unit":"lần"}]'
     )
-
-    def __str__(self):
-        return f"[{self.get_loai_display()}] {self.ten}"
-
-    class Meta:
-        verbose_name_plural = "1. Hàng hóa"
-        ordering = ['loai', 'ten']
-
-
-# ====================== 2. CÔNG THỨC MÓN ======================
-class CongThuc(models.Model):
-    mon = models.CharField("Tên món", max_length=200, unique=True)
-
-    def __str__(self):
-        return self.mon
-
-    class Meta:
-        verbose_name_plural = "2. Công thức món"
-
-
-class ChiTietCongThuc(models.Model):
-    cong_thuc = models.ForeignKey(CongThuc, on_delete=models.CASCADE, related_name='chi_tiet')
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE)
-    dinh_luong = models.DecimalField("Định lượng cho 1 món", max_digits=12, decimal_places=4)
-
-    class Meta:
-        unique_together = ('cong_thuc', 'hang_hoa')
-        verbose_name_plural = "   Chi tiết công thức"
-
-    def __str__(self):
-        return f"{self.cong_thuc} → {self.hang_hoa} ({self.dinh_luong})"
-
-
-# ====================== 3. TỒN KHO QUẦY BAR ======================
-class TonKhoQuayBar(models.Model):
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE, related_name='ton_quay_bar')
-    ngay = models.DateField("Ngày")
-    ton_dau = models.DecimalField("Tồn đầu ngày (tự động)", max_digits=14, decimal_places=4, default=0, editable=False)
-    nhap = models.DecimalField("Nhập trong ngày", max_digits=14, decimal_places=4, default=0)
-    ton_cuoi = models.DecimalField("Tồn cuối ngày (nhân viên nhập)", max_digits=14, decimal_places=4)
-    luong_dung = models.DecimalField("Lượng dùng trong ngày (tự động)", max_digits=14, decimal_places=4, default=0, editable=False)
-
-    class Meta:
-        unique_together = ('hang_hoa', 'ngay')
-        verbose_name_plural = "3. Tồn kho quầy bar"
-
-    def clean(self):
-        if self.ton_cuoi < 0:
-            raise ValidationError("Tồn cuối ngày không được âm")
-
-    def save(self, *args, **kwargs):
-        # Tính tồn đầu ngày = tồn cuối hôm trước + nhập hôm nay
-        ngay_truoc = self.ngay - timezone.timedelta(days=1)
-        ton_truoc = TonKhoQuayBar.objects.filter(hang_hoa=self.hang_hoa, ngay=ngay_truoc).first()
-        self.ton_dau = (ton_truoc.ton_cuoi if ton_truoc else Decimal('0')) + self.nhap
-
-        # Tính lượng dùng
-        self.luong_dung = self.ton_dau - self.ton_cuoi
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.hang_hoa} - {self.ngay} | Dùng: {self.luong_dung}"
-
-
-# ====================== 9. TỔNG LƯỢNG DÙNG QUẦY BAR THEO KHOẢNG NGÀY ======================
-class TongLuongDungQuayBar(models.Model):
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE)
-    ngay_bat_dau = models.DateField("Từ ngày")
-    ngay_ket_thuc = models.DateField("Đến ngày")
-    tong_luong_dung = models.DecimalField(
-        "TỔNG LƯỢNG DÙNG (thực tế quầy bar)", 
-        max_digits=16, decimal_places=4, 
-        default=0, editable=False
+    recipe_type = models.TextField("Loại", choices=RECIPE_TYPE_CHOICES, default='final')
+    output_product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL,
+        null=True, blank=True, db_column='output_product_id',
+        related_name='produced_by',
+        help_text="Chỉ dùng cho sub-recipe — recipe này tạo ra product nào"
     )
-    so_ngay = models.PositiveIntegerField("Số ngày", default=0, editable=False)
+    output_qty = models.DecimalField("Output qty", max_digits=14, decimal_places=4, null=True, blank=True)
+    output_unit = models.TextField("Output unit", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
-        unique_together = ('hang_hoa', 'ngay_bat_dau', 'ngay_ket_thuc')
-        verbose_name_plural = "9. Tổng lượng dùng quầy bar theo khoảng ngày"
-        indexes = [models.Index(fields=['ngay_bat_dau', 'ngay_ket_thuc'])]
-
-    def save(self, *args, **kwargs):
-        # Tự động tính tổng lượng dùng từ bảng TonKhoQuayBar
-        qs = TonKhoQuayBar.objects.filter(
-            hang_hoa=self.hang_hoa,
-            ngay__range=[self.ngay_bat_dau, self.ngay_ket_thuc]
-        ).aggregate(
-            tong=Sum('luong_dung')
-        )
-        self.tong_luong_dung = qs['tong'] or Decimal('0')
-        self.so_ngay = (self.ngay_ket_thuc - self.ngay_bat_dau).days + 1
-        super().save(*args, **kwargs)
+        managed = False
+        db_table = 'recipes'
+        verbose_name = 'Công thức'
+        verbose_name_plural = '5. Công thức món'
+        ordering = ['recipe_type', 'name']
 
     def __str__(self):
-        return f"{self.hang_hoa} | {self.ngay_bat_dau} → {self.ngay_ket_thuc} | Tổng dùng: {self.tong_luong_dung} {self.hang_hoa.don_vi_quay_bar}"
+        prefix = "🍵 " if self.recipe_type == 'sub' else "🍽 "
+        return f"{prefix}{self.name}"
 
-# ====================== 4. TỒN KHO LỄ TÂN ======================
-class TonKhoLeTan(models.Model):
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE, related_name='ton_le_tan')
-    ngay = models.DateField("Ngày")
-    ton_cuoi = models.DecimalField("Tồn cuối ngày (nhân viên nhập)", max_digits=14, decimal_places=4)
+    def compute_cost_active(self):
+        """Gọi function PostgreSQL compute_recipe_cost_active(id)."""
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute("SELECT public.compute_recipe_cost_active(%s)", [str(self.id)])
+            return cur.fetchone()[0]
+
+
+# ====================== 6. INVENTORY DAILY ======================
+class InventoryDaily(models.Model):
+    WAREHOUSE_CHOICES = [
+        ('Bếp', 'Bếp'),
+        ('Quầy', 'Quầy'),
+        ('Lễ tân', 'Lễ tân'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column='product_id')
+    date = models.DateField("Ngày")
+    warehouse = models.TextField("Kho", choices=WAREHOUSE_CHOICES)
+    opening_stock = models.DecimalField("Tồn đầu", max_digits=14, decimal_places=4, default=0)
+    received = models.DecimalField("Nhập", max_digits=14, decimal_places=4, default=0)
+    closing_stock = models.DecimalField("Tồn cuối", max_digits=14, decimal_places=4, default=0)
+    actual_used = models.DecimalField(
+        "Lượng dùng (tự tính)",
+        max_digits=14, decimal_places=4,
+        null=True, blank=True, editable=False,
+        help_text="= opening + received - closing (Postgres generated column)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_by = models.UUIDField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('hang_hoa', 'ngay')
-        verbose_name_plural = "4. Tồn kho lễ tân"
+        managed = False
+        db_table = 'inventory_daily'
+        verbose_name = 'Tồn kho ngày'
+        verbose_name_plural = '6. Tồn kho theo ngày'
+        unique_together = (('product', 'date', 'warehouse'),)
+        ordering = ['-date', 'warehouse', 'product__name']
 
     def __str__(self):
-        return f"{self.hang_hoa} - {self.ngay}: {self.ton_cuoi} {self.hang_hoa.don_vi_le_tan or ''}"
-
-
-# ====================== 5. TỔNG TỒN KHO (TỰ ĐỘNG) ======================
-class TongTonKho(models.Model):
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE)
-    ngay = models.DateField("Ngày")
-    ton_quay_bar = models.DecimalField("Tồn quầy bar", max_digits=14, decimal_places=4, default=0, editable=False)
-    ton_le_tan = models.DecimalField("Tồn lễ tân", max_digits=14, decimal_places=4, default=0, editable=False)
-    tong_quy_doi = models.DecimalField("TỔNG TỒN (quy đổi về quầy bar)", max_digits=14, decimal_places=4, default=0, editable=False)
-
-    class Meta:
-        unique_together = ('hang_hoa', 'ngay')
-        verbose_name_plural = "5. Tổng tồn kho (tự động)"
-
-    def save(self, *args, **kwargs):
-        bar = TonKhoQuayBar.objects.filter(hang_hoa=self.hang_hoa, ngay=self.ngay).first()
-        le = TonKhoLeTan.objects.filter(hang_hoa=self.hang_hoa, ngay=self.ngay).first()
-
-        self.ton_quay_bar = bar.ton_cuoi if bar else Decimal('0')
-        self.ton_le_tan = le.ton_cuoi if le else Decimal('0')
-        self.tong_quy_doi = self.ton_quay_bar + (self.ton_le_tan * self.hang_hoa.ty_le_quy_doi)
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.hang_hoa} - {self.ngay}: {self.tong_quy_doi} {self.hang_hoa.don_vi_quay_bar}"
-
-
-# ====================== 6. XUẤT MÓN THEO FABI (từ Excel) ======================
-class XuatMonFabi(models.Model):
-    ngay_xuat = models.DateField("Ngày xuất")
-    cong_thuc = models.ForeignKey(CongThuc, on_delete=models.PROTECT)
-    so_luong = models.PositiveIntegerField("Số lượng món")
-
-    class Meta:
-        verbose_name_plural = "6. Xuất món theo Fabi (Excel)"
-
-    def __str__(self):
-        return f"{self.cong_thuc} × {self.so_luong} - {self.ngay_xuat}"
-
-
-# ====================== 7. XUẤT NGUYÊN LIỆU THEO FABI (tự động tính) ======================
-class XuatNguyenLieuFabi(models.Model):
-    ngay_xuat = models.DateField("Ngày xuất")
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE)
-    so_luong = models.DecimalField("Số lượng theo Fabi", max_digits=14, decimal_places=4)
-
-    class Meta:
-        unique_together = ('ngay_xuat', 'hang_hoa')
-        verbose_name_plural = "7. Xuất nguyên liệu theo Fabi (tự động)"
-
-    def __str__(self):
-        return f"{self.hang_hoa} - {self.ngay_xuat}: {self.so_luong}"
-    
-# ====================== 8. SO SÁNH FABI VS THỰC TẾ THEO KỲ (THAY THẾ HOÀN TOÀN BẢNG CŨ) ======================
-class SoSanhFabiVsThucTe(models.Model):
-    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE)
-    ngay_bat_dau = models.DateField("Từ ngày")
-    ngay_ket_thuc = models.DateField("Đến ngày")
-    
-    fabi_tong = models.DecimalField("Tổng Fabi (lý thuyết)", max_digits=16, decimal_places=4, default=0, editable=False)
-    thuc_te_tong = models.DecimalField("Tổng thực tế (quầy bar)", max_digits=16, decimal_places=4, default=0, editable=False)
-    chenh_lech_tong = models.DecimalField("Chênh lệch tổng kỳ", max_digits=16, decimal_places=4, default=0, editable=False)
-    ghi_chu = models.CharField("Kết luận", max_length=100, blank=True, editable=False)
-    so_ngay = models.PositiveIntegerField("Số ngày", default=0, editable=False)
-
-    class Meta:
-        unique_together = ('hang_hoa', 'ngay_bat_dau', 'ngay_ket_thuc')
-        verbose_name_plural = "8. SO SÁNH FABI VS THỰC TẾ THEO KỲ (CHÍNH THỨC)"
-        indexes = [models.Index(fields=['ngay_bat_dau', 'ngay_ket_thuc'])]
-
-    def save(self, *args, **kwargs):
-        # Tổng Fabi trong kỳ
-        fabi = XuatNguyenLieuFabi.objects.filter(
-            hang_hoa=self.hang_hoa,
-            ngay_xuat__range=[self.ngay_bat_dau, self.ngay_ket_thuc]
-        ).aggregate(tong=Sum('so_luong'))['tong'] or Decimal('0')
-        
-        # Tổng thực tế trong kỳ
-        thuc_te = TonKhoQuayBar.objects.filter(
-            hang_hoa=self.hang_hoa,
-            ngay__range=[self.ngay_bat_dau, self.ngay_ket_thuc]
-        ).aggregate(tong=Sum('luong_dung'))['tong'] or Decimal('0')
-        
-        self.fabi_tong = fabi
-        self.thuc_te_tong = thuc_te
-        self.chenh_lech_tong = thuc_te - fabi
-        self.so_ngay = (self.ngay_ket_thuc - self.ngay_bat_dau).days + 1
-        
-        if abs(self.chenh_lech_tong) < Decimal('0.0001'):
-            self.ghi_chu = "ĐÚNG CHUẨN"
-        elif self.chenh_lech_tong > 0:
-            self.ghi_chu = f"HAO HỤT {self.chenh_lech_tong} {self.hang_hoa.don_vi_quay_bar}"
-        else:
-            self.ghi_chu = f"THỪA {abs(self.chenh_lech_tong)} {self.hang_hoa.don_vi_quay_bar}"
-            
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.hang_hoa} | {self.ngay_bat_dau}→{self.ngay_ket_thuc} | Chênh: {self.chenh_lech_tong}"
+        return f"{self.product.name} - {self.date} - {self.warehouse}"
